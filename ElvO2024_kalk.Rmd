@@ -5,9 +5,7 @@ date: "2025-06-16"
 editor_options: 
   chunk_output_type: console
 ---
-
 PÃ¥ samme mÃ¥te som i 2020 sÃ¥ skal vi ogsÃ¥ i Ã¥r ha med resultater fra noen av de kalkede elvene. 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -42,7 +40,6 @@ kalk <- read.table("Kalkelver_data til ElvO_2019-2024.txt", header=TRUE, sep="\t
 #ikke fÃ¸lgende elver: Uskedalselva og Yndesdalselva 
 print(unique(kalk$Lokalitet))
 print(unique(kalk$Vassdrag))
-
 ```
 
 FÃ¸lgende parametere skal plottes, 2025 og 2019-2023 gjennomsnitt:
@@ -73,8 +70,38 @@ kalk_24 <- subset(kalk_long, year==2024)
 kalk_ave <- subset(kalk_long, !year==2024)
 #nrow(kalk_ave)
 ```
-Gjennomsnitt av gjennomsnittet, ta fÃ¸rst gjennomsnitt per Ã¥r og sÃ¥ alle Ã¥rene sammen
 
+summary table: would like to have observations per site per year per parameter
+```{r}
+kalk_24xx <- kalk_24 %>%
+  group_by(Vassdrag, year, parameter) %>%
+   select(verdi) %>% 
+  summarise(non_na_count = sum(!is.na(verdi)))
+
+#from long to wide
+
+kalk_24xxz <- kalk_24xx %>%
+  group_by(Vassdrag, year)%>%
+  pivot_wider(names_from = parameter, values_from = non_na_count)
+
+write.csv(kalk_24xxz, "Kalk_obs per parameter_2024.csv")
+
+#ALL years expect 2024
+kalk_avexx1 <- kalk_ave %>%
+  group_by(Vassdrag, parameter) %>%
+   select(verdi) %>% 
+  summarise(non_na_count = sum(!is.na(verdi)))
+
+#from long to wide
+kalk_avexxz1 <- kalk_avexx1 %>%
+  group_by(Vassdrag)%>%
+  pivot_wider(names_from = parameter, values_from = non_na_count)
+
+write.csv(kalk_avexxz, "Kalk_obs per parameter_2019_2023.csv")
+```
+
+
+Gjennomsnitt av gjennomsnittet, ta fÃ¸rst gjennomsnitt per Ã¥r og sÃ¥ alle Ã¥rene sammen
 ```{r Make averages}
 #MAKE summary tables of parameters, remember to expand the variable selection!
 #First, summary per year
@@ -84,7 +111,6 @@ fo <- kalk_ave %>%
   summarise(across(everything(), .f = list(mean = mean), na.rm = TRUE))
 
 #then, summary together, 5-year with sd
-
 fox<- fo %>%
   group_by(Vassdrag, parameter) %>%
   select(verdi_mean)%>%
@@ -134,7 +160,6 @@ write.csv(All, "250612_test.csv")
 #write.csv(dfsum2y, "240701_test2.csv")
 ```
 
-
 REMAINS TO BE DONE!
 Set order of station names and legend titles
 - make sure that the norwegian letters are in the names
@@ -142,11 +167,12 @@ Set order of station names and legend titles
 #remove two rivers
 dfsum5 <- subset(dfsum2xxx, !Vassdrag %in% c("Uskedalselva", "Yndelsdalselva", "Tovdalselva"))
 
-
 #fix misspelled names
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("Arendalsvassdraget"="Nidelva"))
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("Suldalsl???gen"="Suldalslågen"))
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("SuldalslÃ¥gen"="Suldalslågen"))
+dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("Suldalsl???gen"="Suldalslågen"))
+dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("Suldalsl???gen"="Suldalslågen"))
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("R?dneelva"="Rødneelva"))
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("RÃ¸dneelva"="Rødneelva"))
 dfsum5$Vassdrag <- revalue(dfsum5$Vassdrag, c("J?rpelandselva"="Jørpelandselva"))
@@ -164,6 +190,9 @@ dfsum7 <- dfsum5 %>%
   group_by(parameter, year) %>% 
            mutate(year=factor(year,
                      levels=c("5-year mean", "2024 mean")))
+
+
+summary(dfsum7)
 ```
 Use the following for making automatised figures with correct axis-titles. BUT make sure to only include those variables you will plot. 
 ```{r}
@@ -172,8 +201,8 @@ dfsum3 <- dfsum7 %>%
   mutate(title = case_when(
     parameter== "Turbiditet" ~ "Turbidity",
     parameter== "TOC" ~ "Total organic carbon",
-    parameter== "TOTN" ~ "Total nitrogen",
-    parameter== "TOTP" ~ "Total phosphorous",
+    parameter== "TotN" ~ "Total nitrogen",
+    parameter== "TotP" ~ "Total phosphorous",
     parameter== "SiO2" ~ "Silica",
     parameter== "As" ~ "Arsenic",
     parameter== "Pb" ~ "Lead",
@@ -188,18 +217,18 @@ dfsum3 <- dfsum7 %>%
   mutate(abbr = case_when(
     parameter== "Turbiditet" ~ "TURB (FNU)",
     parameter== "TOC" ~ "TOC (mg/L)",
-    parameter== "TOTN" ~ "Tot-N (Âµg/L)",
-    parameter== "TOTP" ~ "Tot-P (Âµg/L)",
+    parameter== "TotN" ~ "Tot-N (µg/L)",
+    parameter== "TotP" ~ "Tot-P (µg/L)",
     parameter== "SiO2" ~ "SiO2 (mg/L)",
-    parameter== "As" ~ "As (Âµg/L)",
-    parameter== "Pb" ~ "Pb (Âµg/L)",
-    parameter== "Cd" ~ "Cd (Âµg/L)",
-    parameter== "Cu" ~ "Cu (Âµg/L)",
-    parameter== "Zn" ~ "Zn (Âµg/L)",
-    parameter== "Cr" ~ "Cr (Âµg/L)",
+    parameter== "As" ~ "As (µg/L)",
+    parameter== "Pb" ~ "Pb (µg/L)",
+    parameter== "Cd" ~ "Cd (µg/L)",
+    parameter== "Cu" ~ "Cu (µg/L)",
+    parameter== "Zn" ~ "Zn (µg/L)",
+    parameter== "Cr" ~ "Cr (µg/L)",
     parameter== "Ca" ~ "Ca (mg/L)",
     parameter== "pH" ~ "pH unit",
-    parameter== "Ni" ~ "Ni (Âµg/L)",
+    parameter== "Ni" ~ "Ni (µg/L)",
   ))
 ```
 
@@ -263,17 +292,17 @@ ggsave(filename = paste0("output_kalk/",
 }
 
 ```
-
 Sokndalselva Ca antatt feil unit så delte verdiene på 1000: Datoer 07.09.2020 og 14.09.2020
 
-
 Plotting - may need some adaptation
-
 ```{r}
-#
 #dfsum3x <- subset(dfsum3, !Vassdrag %in% c("Tovdalselva"))
 
-pH22 <- ggplot(subset(dfsum3, parameter %in% c("pH")) , aes(x=Vassdrag, y=verdi_mean, fill=year))  +
+dfsum4 <- dfsum3 %>% 
+  mutate(abbr = factor(abbr, # put education levels in logical order
+                               levels = c("pH unit", "Ca (mg/L)")))
+
+pH22_scale <- ggplot(subset(dfsum4, parameter %in% c("pH")) , aes(x=Vassdrag, y=verdi_mean, fill=year))  +
   geom_col( width=0.8, position=position_dodge())+
   geom_errorbar(aes(x=Vassdrag, ymin=pmax(verdi_mean-xsd, 0), ymax=verdi_mean+xsd),
                 width=.4,size=0.4, position=position_dodge(width=0.8), col="black")+
@@ -288,18 +317,304 @@ pH22 <- ggplot(subset(dfsum3, parameter %in% c("pH")) , aes(x=Vassdrag, y=verdi_
         legend.spacing.x = unit(0.2, 'cm'),
         plot.title = element_text(size = 24, hjust = 0.5),
         panel.grid.major.x = element_blank(),
-        strip.background = element_blank(),
-        strip.text.x = element_blank())+
+        #strip.background = element_rect(colour="black", fill="grey"),
+        strip.text.y = element_text(size=14))+
   theme(legend.position="top")+
   labs(title = "pH", x = "", y = "pH units")+
-  coord_cartesian(ylim = c(5, 8.5))+
-  scale_y_continuous(breaks=c(5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5), labels = fmt_dcimals(1))
+  coord_cartesian(ylim = c(5, 7.0))+
+  scale_y_continuous(breaks=c(5.0, 5.5, 6.0, 6.5, 7.0), labels = fmt_dcimals(1))
+  facet_grid(abbr~., scales="free_y")
 
-ggsave(filename = "output_kalk/pH24_scale.png",
-       plot = pH22,
+
+#labeller = as_labeller(c("pH" = "pH", "Ca" = "Calsium")))
+#labeller = as_labeller(c("4" = "Case1", "f" = "Case2", "r" = "Case3")))
+
+ggsave(filename = "output_kalk/pH_Ca24_scale.png",
+       plot = pH22_scale,
        width = 11, height = 8.5, units = "in")
+```
+
+
+```{r}
+#dfsum3x <- subset(dfsum3, !Vassdrag %in% c("Tovdalselva"))
+dfsum4 <- dfsum3 %>% 
+  mutate(abbr = factor(abbr, # put education levels in logical order
+                               levels = c("pH unit", "Ca (mg/L)")))
+
+pH22_Ca <- ggplot(subset(dfsum4, abbr %in% c("pH unit", "Ca (mg/L)")) , aes(x=Vassdrag, y=verdi_mean, fill=year))  +
+  geom_col( width=0.8, position=position_dodge())+
+  geom_errorbar(aes(x=Vassdrag, ymin=pmax(verdi_mean-xsd, 0), ymax=verdi_mean+xsd),
+                width=.4,size=0.4, position=position_dodge(width=0.8), col="black")+
+  theme_light()+
+  scale_fill_manual(values = c("sienna2", "cyan4"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        #strip.background = element_rect(colour="black", fill="grey"),
+        strip.text.y = element_text(size=14))+
+  theme(legend.position="top")+
+  labs(title = "", x = "", y = "")+
+  #coord_cartesian(ylim = c(5, 8.5))+
+  #scale_y_continuous(breaks=c(5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5), labels = fmt_dcimals(1))+
+  facet_grid(abbr~., scales="free_y")
+
+
+#labeller = as_labeller(c("pH" = "pH", "Ca" = "Calsium")))
+#labeller = as_labeller(c("4" = "Case1", "f" = "Case2", "r" = "Case3")))
+
+ggsave(filename = "output_kalk/pH_Ca24_scale.png",
+       plot = pH22_Ca,
+       width = 11, height = 10, units = "in")
 ```
 
 
 Need to make new plots for those parameters with only a few of the rivers. Is it the same rivers for all parameters?
 - metaller: Ekso, Lygna, Nidelva, Suldalslågen
+
+```{r}
+print(unique(dfsum4$Vassdrag))
+subs <- subset(dfsum3, Vassdrag == c("Ekso", "Lygna", "Nidelva", "Suldalslågen"))
+print(unique(subs$Vassdrag))
+
+ss <- na.omit(dfsum3$verdi_mean)
+
+zz <- subset(dfsum3, parameter %in% c("As", "Cr", "Cu", "Ni", "Pb", "Zn"))
+zz1 <- subset(zz, Vassdrag %in% c("Ekso", "Lygna", "Nidelva", "Suldalslågen"))
+
+zz2 <- zz1 %>% 
+  mutate(parameter = factor(parameter, # put education levels in logical order
+                               levels = c("As",	"Pb",	"Cd",	"Cu",	"Zn",	"Cr")))
+
+
+met <- ggplot(zz2, aes(x=Vassdrag, y=verdi_mean, fill=year))  +
+  geom_col( width=0.6, position=position_dodge())+
+  geom_errorbar(aes(x=Vassdrag, ymin=pmax(verdi_mean-xsd, 0), ymax=verdi_mean+xsd),
+                width=.3,size=0.3, position=position_dodge(width=0.6), col="black")+
+  theme_light()+
+  scale_fill_manual(values = c("sienna2", "cyan4"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        #strip.background = element_rect(colour="black", fill="grey"),
+        strip.text.y = element_text(size=15))+
+  theme(legend.position="top")+
+  labs(title = "Metals", x = "", y = "Concentration (µg/L)")+
+  #coord_cartesian(ylim = c(5, 8.5))+
+  #scale_y_continuous(breaks=c(5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5), labels = fmt_dcimals(1))+
+  facet_grid(parameter~., scales="free_y")
+
+ggsave(filename = "output_kalk/pH_Ca24_scale.png",
+       plot = met,
+       width = 8, height = 13, units = "in")
+
+```
+
+Lag plot av turbiditet som matcher for metallene, kun for noen elver er det data
+```{r}
+zz_tur <- subset(dfsum3, parameter %in% c("Turbiditet"))
+zz1_tur <- subset(zz_tur, Vassdrag %in% c("Ekso", "Lygna", "Nidelva", "Suldalslågen"))
+
+tur <- ggplot(zz1_tur, aes(x=Vassdrag, y=verdi_mean, fill=year))  +
+  geom_col( width=0.6, position=position_dodge())+
+  geom_errorbar(aes(x=Vassdrag, ymin=pmax(verdi_mean-xsd, 0), ymax=verdi_mean+xsd),
+                width=.3,size=0.3, position=position_dodge(width=0.6), col="black")+
+  theme_light()+
+  scale_fill_manual(values = c("sienna2", "cyan4"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        #strip.background = element_rect(colour="black", fill="grey"),
+        strip.text.y = element_text(size=15))+
+  #theme(legend.position="top")+
+  labs(title = "Turbidity", x = "", y = "TURB (FNU)")
+  #coord_cartesian(ylim = c(5, 8.5))+
+  #scale_y_continuous(breaks=c(5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5), labels = fmt_dcimals(1))
+  facet_grid(parameter~., scales="free_y")
+
+ggsave(filename = "output_kalk/turb.png",
+       plot = tur,
+       width = 8.2, height = 6.5, units = "in")
+
+```
+
+
+
+STACKED BAR CHARTS
+dx24$POC = dx24$TOC - dx24$DOC
+ammonium + nitrat + org-N
+
+### 2) Bargraphs, stacked. This is typically for fractions, e.g. nutrients, DOC/POC, etc. 
+# Calculate for stacked bars, 2020-data only 
+Variables: TOC+DOC, 
+  - two or three components stacked
+
+Calculate the fractions that will be plotted. For the 2024 data only. 
+
+- use dataset after LOD correction (no obs < LOD in this dataset)
+- from long to wide (we can start with wide). Dataset kalk? 
+- calculate parameters needed
+- from wide to long
+
+- POC in unit ug/L, but we will not use it
+```{r}
+#dx24 <- dat24_wide[complete.cases(dat24_wide), ]
+
+kalk$POC1 = kalk$TOC - kalk$DOC
+kalk$Org.N = kalk$TotN - kalk$NO3 - kalk$NH4
+
+```
+
+Make new summary table
+```{r}
+#we only need 2024 data
+kalk24 <- subset(kalk, year == 2024)
+
+#Negative POC values replaced by zero
+kalk24$POC1[kalk24$POC1 < 0] <- 0       # Set negative values to 0
+
+kalk24_2 <- kalk24[c("Vassdrag", "year", "month", "Dato", "TOC", "DOC", "POC1", "Org.N", "TotN", "NH4", "NO3")]
+
+#MAKE summary tables of parameters, remember to expand the variable selection!
+#to check if the nas are the problem
+kalk24_2[is.na(kalk24_2)] <- 0
+
+kalk24.sum <- kalk24_2 %>%
+  group_by(Vassdrag) %>%
+  select(TOC:NO3) %>% # select variables to summarise, from and to
+  summarise(across(everything(), .f = list(mean = mean), na.rm = TRUE))
+
+#names(df.sum)[names(df.sum) == 'TOTPP_mean'] <- 'TOTP.P_mean'
+
+#Reshape summary table
+kalk24.sum2 <- kalk24.sum %>%
+  pivot_longer(
+    cols = !c(Vassdrag), #specify columns we want to pivot
+    names_sep = "_",
+    names_to  = c("chem", ".value"))
+
+#PLOTTING: different data with different types of plots
+names(kalk24.sum2) <- c("Station.name", "chem", "xmean")
+
+#df.sum2$Station.name <- revalue(df.sum2$Station.name, c("MÃƒÂ¥lselv"="MÃƒÂ¥lselva"))
+print(unique(kalk24.sum2$Station.name))
+
+#fix misspelled names
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("Arendalsvassdraget"="Nidelva"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("Suldalsl???gen"="Suldalslågen"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("SuldalslÃ¥gen"="Suldalslågen"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("Suldalsl???gen"="Suldalslågen"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("Suldalsl???gen"="Suldalslågen"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("R?dneelva"="Rødneelva"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("RÃ¸dneelva"="Rødneelva"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("J?rpelandselva"="Jørpelandselva"))
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("JÃ¸rpelandselva"="Jørpelandselva"))
+
+kalk24.sum3 <- kalk24.sum2 %>% 
+  mutate(Station.name = factor(Station.name, # put education levels in logical order
+                               levels = c("Audna", "Mandalselva", "Lygna", "Kvina", "Tovdalselva", "Nidelva",
+                                          "Ogna", "Sokndalselva", "Frafjordelva", "Espedalselva", "Lyseelva", "Jørpelandselva", "Ekso", "Modalselva", "Guddalsvassdraget", "Rødneelva", "Suldalslågen")))
+
+```
+
+Plotting of stacked will require individual adaptations using the ggplot below. Two plots need facet. 
+Carbon
+1) Dissolved (DOC) on the bottom and particulate (POC) on top
+```{r}
+#To make plots individually to individual optimization
+
+#only the rivers with this data from 2024: nidelva, lygna, suldalslågen og ekso
+kalk24.sum2y <- subset(kalk24.sum2, Station.name %in% c("Nidelva", "Lygna", "Suldalslågen", "Ekso"))
+
+#fill = forcats::fct_rev(chem)))
+#PLOT stacket with possibility of facet
+POCDOC <- ggplot(subset(kalk24.sum2y, chem %in% c("DOC", "POC1")), aes(x=Station.name, y=xmean,
+                                                  fill = forcats::fct_rev(chem)))+
+  geom_col(width=0.6)+
+  theme_light()+
+  scale_fill_manual(values = c("cyan3", "cyan4"), 
+                    labels = c("Particulate organic carbon (POC)", "Dissolved organic carbon (DOC)"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank())+
+  #theme(legend.position="top")+
+  labs(title = "", y =expression(paste("Org.-C (mg/L)")))+
+  scale_y_continuous(labels = fmt_dcimals(1))
+```
+
+saving the POC_DOC plot
+
+```{r}
+ggsave(filename = "output_kalk/Stack_DOCPOC.png",
+       plot = POCDOC,
+       width = 8.2, height = 6.5, units = "in")
+```
+
+2) Total organic (TON) on bottom, Total nitrate (NO3.N) and ammonium (NH4.N)
+```{r, Plotting N fractions}
+#To make plots individually to individual optimization
+#kalk24.sum2y <- subset(kalk24.sum2, Station.name %in% c("Nidelva", "Lygna", "Suldalslågen", "Ekso"))
+print(unique(kalk24.sum2$Station.name))
+
+#FIKS NAVN FOR Suldalslpgen og fjern de to elvene Øyvind sa at ikke skal være med
+kalk24.sum2$Station.name <- revalue(kalk24.sum2$Station.name, c("Suldalsl???gen"="Suldalslågen"))
+
+kalk24.sum3 <- kalk24.sum2[!kalk24.sum2$Station.name%in%c("Uskedalselva", "Yndelsdalselva"),]
+
+
+N.frac_k <- ggplot(subset(kalk24.sum3, chem %in% c("NH4", "NO3", "Org.N")), aes(x=Station.name, y=xmean,
+                                                  fill = chem))+
+  geom_col(width=0.6)+
+  theme_light()+
+  scale_fill_manual(values = c("cyan2", "cyan3", "cyan4"), 
+                    labels = c("Ammonium-N", "Nitrate-N", "Total organic-N"))+
+  labs(title = "", y =expression(paste("N (",mu,"g/L)")))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank())
+  
+  
+#scale_y_continuous(breaks=c(0, 250, 500, 750, 1000, 1250, 1500)) 
+```
+
+saving the plot
+```{r, Saving N fractions}
+ggsave(filename = "output_kalk/N_frac.png",
+       plot = N.frac_k,
+       width = 11, height = 8.5, units = "in")
+```
+
+
