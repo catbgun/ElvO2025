@@ -42,6 +42,23 @@ print(unique(kalk$Lokalitet))
 print(unique(kalk$Vassdrag))
 ```
 
+FEIL i Ca-verdier også for følgende:
+Ogna	027-58845	Ognaelva ved Hylland bru (VK53/BU8)	07.09.2020	6.7	1001
+Ogna	027-58845	Ognaelva ved Hylland bru (VK53/BU8)	21.09.2020	6.5	1400
+Ogna	027-58845	Ognaelva ved Hylland bru (VK53/BU8)	19.10.2020		1200
+Ogna	027-58845	Ognaelva ved Hylland bru (VK53/BU8)	30.11.2020	6.3	1300
+R?dneelva	038-58854	?vstab?elva (R?dneelva) ved Sandeid (VK4/FI8)	21.09.2020	6.5	1700
+R?dneelva	038-58854	?vstab?elva (R?dneelva) ved Sandeid (VK4/FI8)	19.10.2020		860
+R?dneelva	038-58854	?vstab?elva (R?dneelva) ved Sandeid (VK4/FI8)	16.11.2020		600
+R?dneelva	038-58854	?vstab?elva (R?dneelva) ved Sandeid (VK4/FI8)	30.11.2020		1100
+
+Følgende to ble slettet:
+1378	Frafjordelva	030-58838	Frafjordåna (VK1)	07.08.2023	5.9	39
+98	Nidelva	019-44498	Nidelva ved Rygene (VK1)	07.08.2023	6.1	20
+
+
+
+
 For Usdelaselva var det tre "<LOD" for TOtp. DIsse ble manuelt satt  til 0.5, dvs 1. Disse dataene ble lagt til i ettertid og det var ingen andre LOD i det opprinnelige datasettet. Derfor denne snarveien. 
 Det ble også gjort noen endringer i Ca-dataene som beskrevet under. 
 
@@ -298,6 +315,7 @@ ggsave(filename = paste0("output_kalk/",
 
 ```
 Sokndalselva Ca antatt feil unit så delte verdiene på 1000: Datoer 07.09.2020 og 14.09.2020
+Rettelse: Øyvind mener at vi bør slette Ca-verdien fra 14.09. 
 
 Plotting - may need some adaptation
 ```{r}
@@ -388,13 +406,15 @@ Need to make new plots for those parameters with only a few of the rivers. Is it
 
 #ss <- na.omit(dfsum3$verdi_mean)
 
-zz <- subset(dfsum3, parameter %in% c("As", "Cr", "Cu", "Ni", "Pb", "Zn"))
-zz1 <- subset(zz, Vassdrag %in% c("Ekso", "Lygna", "Nidelva", "Suldalslågen", "Tovdalslågen", "Mandalselva"))
+zz <- subset(dfsum3, parameter %in% c("As", "Cr", "Cd", "Cu", "Ni", "Pb", "Zn"))
+zz1 <- subset(zz, Vassdrag %in% c("Ekso", "Lygna", "Nidelva", "Suldalslågen", "Tovdalslågen"))
 
 zz2 <- zz1 %>% 
   mutate(parameter = factor(parameter, # put education levels in logical order
                                levels = c("As",	"Pb",	"Cd",	"Cu",	"Zn",	"Cr")))
 
+#For sommary table:
+write.csv(zz2, "Metals_summary2.csv")
 
 ggplot(zz2, aes(x=Vassdrag, y=verdi_mean, fill=year))  +
   geom_col( width=0.6, position=position_dodge())+
@@ -624,11 +644,32 @@ N.frac_k <- ggplot(subset(kalk24.sum3x, chem %in% c("NO3", "Org.N")), aes(x=Stat
 #scale_y_continuous(breaks=c(0, 250, 500, 750, 1000, 1250, 1500)) 
 ```
 
-saving the plot
+
 ```{r, Saving N fractions}
 ggsave(filename = "output_kalk/N_frac.png",
        plot = N.frac_k,
        width = 11, height = 8.5, units = "in")
 ```
 
+
+Sammendragstabell for metalene
+```{r}
+#Dato er hovedsaklig hvis det er flere prÃ¸ver per dato. Kanksje bÃ¸r den byttes om til mÃ¥ned for disse prÃ¸vene?
+
+
+
+zz2x <- zz2 %>%
+  group_by(Vassdrag, Dato, parameter) %>%
+  select(verdi) %>% # select variables to summarise, from and to
+  summarise(across(everything(), .f = list(mean = mean), na.rm = TRUE))
+
+zz3x <- zz2x %>%
+  group_by(Vassdrag, parameter) %>%
+  select(verdi_mean) %>% # select variables to summarise, from and to
+  summarise(across(everything(), .f = list(mean = mean, sd=sd), na.rm = TRUE))
+
+names(aa24x) <- c("Vassdrag", "parameter", "verdi_mean", "xsd")
+aa24x$year <- "2024 mean"
+df.sum24 = aa24x %>% relocate(year, .after = "Vassdrag")
+```
 

@@ -1,0 +1,243 @@
+---
+title: "RiverMon22_DOM Quality"
+output: html_document
+date: "2023-08-22"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+MESSAGE TO 2024
+- some problem with duplicate values
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, results=FALSE, message=FALSE, warning=FALSE}
+#install.packages(c("dplyr", "ggplot2", "plyr", "Rmisc", "tidyverse", "lubridate", "stringr"))
+Packages <- c("plyr", "dplyr", "ggplot2",  "Rmisc", "tidyverse", "lubridate", "stringr", "tm")
+lapply(Packages, library, character.only = TRUE)
+```
+
+!! When problem with the norwegian letters, run the following in the console: Sys.setlocale(locale="no_NO") 
+
+Load the two datafiles of current year and previous years data 
+```{r echo = T, results = 'hide'}
+Sys.setlocale(locale="no_NO") 
+
+#DOM <- read.table("22_DOM_EvO_Maeve.txt", header=TRUE, sep="\t", na.string=c(""))
+DOM <- read.table("23_DOM_EvO_Maeve.txt", header=TRUE, sep="\t", na.string=c(""))
+```
+
+```{r Fix DOM quality file}
+colnames(DOM)[1] ="Station.name"
+unique(DOM$Station.name)
+
+DOM$Station.name <- revalue(DOM$Station.name, c("Vegardselva"="Storelva"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Tanaelva"="Tana"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Vosso (Bolstadelvi)"="Vosso"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Vosso(Bolstadelvi)"="Vosso"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Glomma ved Sarpsfoss"="Glomma"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Nidelva (Tr.heim)" ="Nidelva"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Nidelva(Tr.heim)" ="Nidelva"))
+DOM$Station.name <- revalue(DOM$Station.name, c("NumedalslÃ¥gen"="Numedalslågen"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Numedalslagen"="Numedalslågen"))
+DOM$Station.name <- revalue(DOM$Station.name, c("MÃ¥lselva"="Målselva"))
+DOM$Station.name <- revalue(DOM$Station.name, c("Malselv"="Målselva"))
+
+DOM2 <- subset(DOM, DOM$Station.name!="Vorma nedstr Svanfoss" & DOM$Station.name!="Leira_v_Krakfoss" & DOM$Station.name!="Leira v/Krakfoss")
+
+unique(DOM2$Station.name) 
+
+DOM2$name <- revalue(DOM2$name, c("E2_E3" ="E2E3"))
+DOM2$name <- revalue(DOM2$name, c("SUVA_254" ="SUVA254"))
+
+```
+
+### 1.1) Create averages for the 5-year average
+Bargraphs, dodged of main chemical variables. 2022-annual average for each river including stdev error bars together with previous maximum 5-year for comparison.
+First, make annual averages of the 5-year mean data. Or else the error bars in the figures will be wrong.
+
+```{r Make annual averages of 5-year data}
+DOM2$Dates <- as.Date(DOM2$date,format = "%d.%m.%Y")
+DOM2$Year <- format(DOM2$Dates, format="%Y")
+
+#separate file in two, one for 5-y average and one for 2022
+DOM22 <- subset(DOM2, Year == "2023")
+DOM5y <- subset(DOM2, Year == c("2018","2019","2020", "2021", "2022"))
+
+#vos <- subset(DOM22, Station.name=="Vosso")
+
+#from long to wide to make summary tables, but first remove dublicate rows
+elfh <- DOM5y %>% distinct()
+DOM5y_wide <- spread(elfh, name, value)
+
+#MAKE summary tables of parameters, remember to expand the variable selection!
+#First, summary per year
+fo <- DOM5y_wide %>%
+  group_by(Station.name, Year) %>%
+  select(doc:SUVA254) %>% # select variables to summarise, from and to
+  summarise(across(everything(), .f = list(mean = mean), na.rm = TRUE))
+
+#then, summary together, 5-year with sd
+fox<- fo %>%
+  group_by(Station.name) %>%
+  select(doc_mean:SUVA254_mean)%>%
+  summarise(across(everything(), .f = list(mean = mean, sd=sd), na.rm = TRUE))
+
+#Reshape summary table
+foxy <- fox %>%
+  pivot_longer(
+    cols = !c(Station.name), #specify columns we want to pivot
+    names_sep = "_",
+    names_to  = c("chem","mu", ".value"))
+
+foxy <- foxy[-(3)]
+
+names(foxy) <- c("Station.name", "chem", "xmean", "xsd")
+foxy$year <- "5-year mean"
+foxy = foxy %>% relocate(year, .after = "Station.name")
+```
+Summarising the 2023 data, why not possible to add n?
+```{r}
+#from long to wide to make summary tables
+#2022 data seems to be in duplicate, remove duplicate rows
+#from long to wide to make summary tables, but first remove dublicate rows
+#DOM22x <- subset(DOM22, name== c("SUVA254", "E2E3"))
+
+#identifying duplicate values
+duplicated_rows_dplyr <- DOM |>
+  group_by_all() |>
+  filter(n() > 1) |>
+  ungroup()
+
+#remove the duplicated values
+DOM22x <- DOM22[!duplicated(DOM22), ]
+
+#still a problen so try to create unique row numbers
+DOMz <- dplyr::mutate(DOM22x, ID = row_number())
+
+#el23x <- DOM22 %>% distinct()
+#el23x <- unique(DOM22x)
+#ss <- DOM22 - el23x
+
+DOM22_wide <- spread(DOMz, key=name, value=value)
+
+#library(reshape2)
+#DOM22_wide <- reshape(DOM22, v.names = "name", v.names = "value", direction = "wide")
+
+nrow(DOM22)
+#DOM22_wide <- spread(ell23, name, value)
+
+#DOM22_wide <- pivot_wider(el23x, names_from=name, values_from=value)
+#, values_fn = ~ mean(.x, na.rm = TRUE))
+
+dx22 <- DOM22_wide %>%
+  group_by(Station.name) %>%
+  select(doc:SUVA254) %>% # select variables to summarise, from and to
+  summarise(across(everything(), .f = list(mean = mean, sd=sd), na.rm = TRUE))
+
+#Reshape summary table
+df.sum22 <- dx22 %>%
+  pivot_longer(
+    cols = !c(Station.name), #specify columns we want to pivot
+    names_sep = "_",
+    names_to  = c("chem", ".value"))
+
+df.sum22$year <- "2023 mean"
+
+names(df.sum22) <- c("Station.name", "chem", "xmean", "xsd", "year")
+df.sum22 = df.sum22 %>% relocate(year, .after = "Station.name")
+```
+
+Add the two together and make new summary table. select only those parameters to be used for the automatic plotting
+```{r}
+# 6) Merge the two datasets
+All <- rbind(df.sum22, foxy)
+```
+
+Set order of station names and legend titles
+```{r}
+dfsum3x <- All %>% 
+  group_by(chem, year) %>% 
+  mutate(Station.name = factor(Station.name, # put education levels in logical order
+                               levels = c("Glomma", "Alna", "Drammenselva", "Numedalslågen", "Skienselva",
+                                         "Storelva", "Otra", "Bjerkreimselva", "Orreelva", "Vikedalselva",
+                                          "Vosso", "Nausta", "Driva", "Orkla", "Nidelva", "Vefsna", "Målselva",
+                                          "Altaelva", "Tana", "Pasvikelva")))
+
+#unique(All$Station.name)
+
+#title, abbr
+dfsum3 <- dfsum3x %>% 
+  group_by(chem, year) %>% 
+           mutate(year=factor(year,
+                     levels=c("5-year mean", "2023 mean")))
+```
+
+```{r}
+#To make plots individually to individual optimization
+#Function for Ã¥ definere antall siffer i akse
+fmt_dcimals <- function(decimals=1){
+  function(x) format(x,nsmall = decimals,scientific = FALSE)
+}
+
+#sUVa
+suv <- ggplot(subset(dfsum3, chem %in% c("SUVA254")) , aes(x=Station.name, y=xmean, fill=year))  +
+  geom_col( width=0.8, position=position_dodge())+
+  geom_errorbar(aes(x=Station.name, ymin=pmax(xmean-xsd, 0), ymax=xmean+xsd),
+                width=.4,size=0.4, position=position_dodge(width=0.8), col="black")+
+  theme_light()+
+  scale_fill_manual(values = c("orange", "dodgerblue2"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank())+
+  theme(legend.position="top")+
+  labs(title = "", x = "", y = (bquote(sUVa[254] (mg/L))))+
+  scale_y_continuous(labels = fmt_dcimals(1))
+
+
+ggsave(filename = "output9/sUVa_23.png",
+       plot = suv,
+       width = 11, height = 8.5, units = "in")
+  
+  
+#E2_E3
+e23 <- ggplot(subset(dfsum3, chem %in% c("E2E3")) , aes(x=Station.name, y=xmean, fill=year))  +
+  geom_col( width=0.8, position=position_dodge())+
+  geom_errorbar(aes(x=Station.name, ymin=pmax(xmean-xsd, 0), ymax=xmean+xsd),
+                width=.4,size=0.4, position=position_dodge(width=0.8), col="black")+
+  theme_light()+
+  scale_fill_manual(values = c("orange", "dodgerblue2"))+
+  theme(axis.text.y = element_text(size= 16, colour="black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=20, margin=margin(0,20,0,0)),
+        axis.text.x = element_text(size = 16, angle=45, hjust=1,  colour="black"),
+        legend.title = element_blank(),
+        legend.text=element_text(size=16),
+        legend.spacing.x = unit(0.2, 'cm'),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank())+
+  theme(legend.position="top")+
+  labs(title = "", x = "", y = "E2_E3")+
+  scale_y_continuous(labels = fmt_dcimals(1))
+  
+
+ggsave(filename = "output9/E2E3_23.png",
+       plot = e23,
+       width = 11, height = 8.5, units = "in")
+
+
+
+```

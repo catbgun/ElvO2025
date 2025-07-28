@@ -550,7 +550,7 @@ TOTP22<- ggplot(subset(dfsum3, chem %in% c("TOTP")) , aes(x=Station.name, y=xmea
         strip.background = element_blank(),
         strip.text.x = element_blank())+
   theme(legend.position="top")+
-  labs(title = "Total phosphorous", x = "", y = "TOTP (Âµg/L)")+
+  labs(title = "Total phosphorous", x = "", y = "Tot-P (µg/L)")+
   facet_wrap(.~Facet, scales="free")+
   scale_y_continuous(labels = fmt_dcimals(0))
     
@@ -611,7 +611,7 @@ PO422<- ggplot(subset(dfsum3, chem %in% c("PO4.P")) , aes(x=Station.name, y=xmea
         strip.background = element_blank(),
         strip.text.x = element_blank())+
   theme(legend.position="top")+
-  labs(title = "Phosphate", x = "", y =expression(paste("PO"[4]," (Âµg/L)")))+
+  labs(title = "Phosphate", x = "", y =expression(paste("PO"[4]," (µg/L)")))+
   facet_wrap(.~Facet, scales="free")+
    scale_y_continuous(labels = fmt_dcimals(0))
 ```
@@ -674,7 +674,7 @@ Ni22 <- ggplot(subset(dfsum3, chem %in% c("Ni")) , aes(x=Station.name, y=xmean, 
         strip.text.x = element_blank())+
   theme(legend.position="top")+
   facet_wrap(.~Facet2, scales="free")+
-  labs(title = "Nickel", x = "", y =expression(paste("Ni (Âµg/L)")))
+  labs(title = "Nickel", x = "", y =expression(paste("Ni (µg/L)")))
 ```
 
 Some trixing needs to be done to make the facets have the approperiate width
@@ -739,9 +739,9 @@ dx24 <- Data2 %>%
 #dx24 <- dat24_wide[complete.cases(dat24_wide), ]
 
 dx24$DOC <- as.numeric(dx24$DOC)
-dx24$DOC <- as.numeric(dx24$TOC)
+dx24$TOC <- as.numeric(dx24$TOC)
 
-dx24$POC = dx24$TOC - dx24$DOC
+dx24$POC1 = dx24$TOC - dx24$DOC
 dx24$TDP = dx24$TOTP - dx24$TOTPP #NOT SURE IF THIS IS CORRECT
 dx24$Org.P = dx24$TOTP - dx24$PO4.P
 
@@ -773,7 +773,10 @@ df.sum2 <- df.sum %>%
 head(df.sum2)
 names(df.sum2) <- c("Station.name", "chem", "xmean")
 
-#df.sum2$Station.name <- revalue(df.sum2$Station.name, c("MÃƒÂ¥lselv"="MÃƒÂ¥lselva"))
+df.sum2$Station.name <- revalue(df.sum2$Station.name, c("M???lselva v/gml E6-brua"= "Målselva"))
+df.sum2$Station.name <- revalue(df.sum2$Station.name, c("Veg???rdselva"= "Storelva"))
+df.sum2$Station.name <- revalue(df.sum2$Station.name, c("Numedalsl???gen"= "Numedalslågen"))
+
 print(unique(df.sum2$Station.name))
 
 dfsum3x <- df.sum2 %>% 
@@ -796,7 +799,7 @@ Carbon
 
 #fill = forcats::fct_rev(chem)))
 #PLOT stacket with possibility of facet
-POCDOC <- ggplot(subset(dfsum3x, chem %in% c("DOC", "POC")), aes(x=Station.name, y=xmean,
+POCDOC <- ggplot(subset(dfsum3x, chem %in% c("DOC", "POC1")), aes(x=Station.name, y=xmean,
                                                   fill = forcats::fct_rev(chem)))+
   geom_col(width=0.6)+
   theme_light()+
@@ -815,11 +818,10 @@ POCDOC <- ggplot(subset(dfsum3x, chem %in% c("DOC", "POC")), aes(x=Station.name,
         strip.text.x = element_blank())+
   theme(legend.position="top")+
   labs(title = "", y =expression(paste("Org.-C (mg/L)")))+
-  scale_y_continuous(labels = fmt_dcimals(0))
+  scale_y_continuous(labels = fmt_dcimals(1))
 ```
 
 saving the POC_DOC plot
-
 ```{r}
 ggsave(filename = "output8/Stack_DOCPOC.png",
        plot = POCDOC,
@@ -835,7 +837,7 @@ TPP_TDP <- ggplot(subset(dfsum3x, chem %in% c("TDP", "TOTP.P")), aes(x=Station.n
                                                   fill = chem))+
   geom_col(width=0.6)+
   theme_light()+
-  scale_fill_manual(values = c("lightskyblue", "dodgerblue2"), 
+  scale_fill_manual(values = c("dodgerblue2", "lightskyblue"), 
                     labels = c("Total dissolved P (TDP)", "Total particulate P (TPP)"))+
   theme(axis.text.y = element_text(size= 16, colour="black"),
         axis.title.x = element_blank(),
@@ -1091,7 +1093,7 @@ THg <- ggplot(Hgdfsum3, aes(x=Station.name, y=xmean, fill=year))  +
         strip.text.x = element_blank())+
   theme(legend.position="top")+
   labs(title = "Total mercury", x = "", y = "THg (ng/L)")+
-    scale_y_continuous(labels = fmt_dcimals(0))
+    scale_y_continuous(labels = fmt_dcimals(1))
 
 
 ggsave(filename = "output7/THg_IS THE DATA CORRECT.png",
